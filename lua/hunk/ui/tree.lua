@@ -106,7 +106,10 @@ local function get_icon(path)
 end
 
 local function file_tree_to_nodes(file_tree)
+  local node_index = 0
+
   return vim.tbl_map(function(node)
+    node_index = node_index + 1
     local line = {}
 
     if node.type == "file" then
@@ -135,6 +138,7 @@ local function file_tree_to_nodes(file_tree)
     local children = file_tree_to_nodes(node.children)
 
     local ui_node = NuiTree.Node({
+      index = node_index,
       line = line,
       change = node.change,
       type = node.type,
@@ -210,6 +214,9 @@ function M.create(opts)
     end,
   })
 
+  local files = utils.get_keys(opts.changeset)
+  local current_change_path = files[1]
+
   local buf = vim.api.nvim_win_get_buf(opts.winid)
 
   local Component = {
@@ -220,6 +227,40 @@ function M.create(opts)
     tree:render()
     signs.clear_signs(buf)
     apply_signs(tree, buf)
+  end
+
+  Component.get_current_change = function()
+    return opts.changeset[current_change_path]
+  end
+
+  Component.set_current_change = function(change)
+    current_change_path = change.filepath
+  end
+
+  local index_of_change = function(change)
+    for i, file in ipairs(files) do
+      if file == change.filepath then
+        return i
+      end
+    end
+  end
+
+  Component.next_change = function()
+    local index = index_of_change(Component.get_current_change())
+    if type(index) == "nil" then
+      Component.set_current_change(files[1])
+      return
+    end
+    Component.set_current_change(files[index])
+  end
+
+  Component.prev_change = function()
+    local index = index_of_change(Component.get_current_change())
+    if type(index) == "nil" then
+      Component.set_current_change(files[#files])
+      return
+    end
+    Component.set_current_change(index <= 1 and #files or index - 1)
   end
 
   for _, chord in ipairs(utils.into_table(config.keys.tree.open_file)) do

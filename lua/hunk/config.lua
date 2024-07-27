@@ -4,6 +4,8 @@ local M = {
       quit = { "q" },
       accept = { "<leader><Cr>" },
       focus_tree = { "<leader>e" },
+      previous_change = { "[c" },
+      next_change = { "]c" },
     },
 
     tree = {
